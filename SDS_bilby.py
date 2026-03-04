@@ -84,7 +84,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from astropy.cosmology import FlatLambdaCDM
 cosmo = FlatLambdaCDM(H0=70, Om0=0.3)
-from gw_likelihood import gw_likelihood
+from H0_posterior import H0_posterior
 from prior import prior_dl
 from H0_likelihood import H0_likelihood
 from tqdm import tqdm
@@ -171,14 +171,14 @@ for i, fname in tqdm(enumerate(result_files), total=len(result_files), desc="Pro
         area_90_list.append(area_90)
         
         # --- 4. Compute GW likelihoods ---
-        gw_likes = gw_likelihood(
+        gw_likes = H0_likelihood(
             ra_samples, dec_samples, dL_samples,
             galaxies_in_CI_sky_distance, H0_grid
         )
         
 
         # --- 5. Convert into H0 likelihood ---
-        like_H0 = H0_likelihood(
+        like_H0 = H0_posterior(
             gw_likes, galaxies_in_CI_sky_distance, H0_grid, df,
             selection_label=selection_effects,
             gmag_key='gmag',
