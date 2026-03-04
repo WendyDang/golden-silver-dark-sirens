@@ -22,8 +22,8 @@ M_g_sun = 5.12
 
 
 
-def H0_likelihood(
-    gw_likelihood,
+def H0_posterior(
+    H0_likelihood,
     galaxy_catalog,
     H0_grid,
     df,
@@ -198,63 +198,3 @@ def H0_likelihood(
     return H0_likelihood
 
 
-
-
-
-
-# def H0_likelihood(gw_likelihood, galaxy_catalog,  H0_grid, df,gmag_key='gmag',
-#                             luminosity_weight=False,self_chosen_luminosity_weight=False):
-
-    
-
-#     if luminosity_weight:
-#         for j in range(len(gw_likelihood)):
-#             gmag = np.array(galaxy_catalog[gmag_key])
-#             # Estimate dL from redshift using H0 = 70 (can be adjusted if needed)
-#             dL_gal = cosmo.luminosity_distance(galaxy_catalog['z_hetdex'][j]).to('Mpc').value  # Mpc
-#             dL_gal_pc = dL_gal * 1e6      # convert to pc
-#             M_g = gmag - 5 * (np.log10(dL_gal_pc) - 1)  # absolute magnitude in g band
-#             Lg_weights = 10 ** (-0.4 * (M_g - M_g_sun))
-#             weights = Lg_weights
-#     elif self_chosen_luminosity_weight:
-#         from scipy.stats import gaussian_kde
-        
-#         # --- Apply distance cut ---
-#         mask = df["dL_nearest"] < 980
-#         gmag = df["gmag_nearest"][mask].values
-#         dL = df["dL_nearest"][mask].values  # in Mpc
-
-#         # --- Convert apparent to absolute magnitude ---
-#         M_abs = gmag - 5 * np.log10(dL) - 25
-#         kde = gaussian_kde(logL_inj)      # try different bw_method if needed
-#         pdf_vals = kde(logL_gal)
-#         pdf_vals = np.maximum(pdf_vals, 1e-12)
-
-#         for j in range(len(gw_likelihood)):
-#             gmag = np.array(galaxy_catalog[gmag_key])
-#             dL_gal = cosmo.luminosity_distance(galaxy_catalog['z_hetdex'][j]).to('Mpc').value  # Mpc
-#             dL_gal_pc = dL_gal * 1e6      # convert to pc
-#             M_g = gmag - 5 * (np.log10(dL_gal_pc) - 1)  # absolute magnitude in g band
-#             Lg_weights = 10 ** (-0.4 * (M_g - M_g_sun))
-#             L_inj=10 ** (-0.4 * (M_abs - M_sun_g))
-#             logL_inj = np.log10(L_inj)
-
-#             logL_gal = np.log10(Lg_weights)
-            
-#             weights = pdf_vals / np.sum(pdf_vals)
-#     else:
-#         weights=1
-
-
-#     # Normalize host weights
-#     weights = weights / np.sum(weights)
-
-
-#     H0_likelihood = np.sum(gw_likelihood.T * weights, axis=1)
-
-#     # Selection effect correction and normalization
-#     H0_likelihood /= H0_grid**3
-#     H0_likelihood /= np.trapz(H0_likelihood, H0_grid)
-
-
-#     return H0_likelihood
