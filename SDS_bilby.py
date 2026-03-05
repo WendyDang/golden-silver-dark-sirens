@@ -11,12 +11,9 @@ from astropy.io import fits
 from astropy.table import Table
 # Choose catalog by setting `catalog_choice` to one of the keys below.
 # For a one-button change, edit the value of `catalog_choice`.
-catalog_choice = "COSMOS"  # change to "COSMOS" or "SHELA" as needed
-
+catalog_choice = "COSMOS"  
 _catalog_paths = {
-    "COSMOS": "/ligo/home/ligo.org/yixuan.dang/gdsirens/data/het_cosmos_tiled_rect_5x5.fits",
-    "SHELA":  "/ligo/home/ligo.org/yixuan.dang/gdsirens/data/het_shela_tiled_3x3.fits",
-    "COMPLETE_SHELA": "/ligo/home/ligo.org/yixuan.dang/gdsirens/data/completed_shela_catalog.fits"
+    # input your choice of catalog
 }
 
 catalog_path = _catalog_paths.get(catalog_choice.upper())
@@ -25,12 +22,12 @@ if catalog_path is None:
 
 catalog = Table.read(catalog_path, format='fits')
 
-filename = "/ligo/home/ligo.org/yixuan.dang/gdsirens/inj_param/gwbench_GDS_HLI#_HET.txt"
-folder = "GDS_sharp_HLI"
-save_dir = "/ligo/home/ligo.org/yixuan.dang/gdsirens/" + folder + "/sky_map_cosmos"
-base_folder = "/ligo/home/ligo.org/yixuan.dang/Bilby_automate/HLI#_golden_PE_relative"
-selection_effects= 'HLI#G'  # change to "default" or one of the keys in beta_dict as needed
-h0_likelihood_output = "./" + folder + "/H0_likelihoods_sf.npz"
+filename = "./gwbench_GDS_HLI#_HET.txt"
+folder = "GDS_sharp_HLI" #to store the results 
+save_dir = "./" + folder + "/sky_map_cosmos" #store skymaps if saved any
+base_folder = "./Bilby_automate/HLI#_golden_PE_relative" # where bilby results are stored
+selection_effects= 'HLI#G'  # change to "default" or one of the keys in beta_dict as needed, see H0_posterior
+h0_likelihood_output = "./" + folder + "/H0_likelihoods_sf.npz" #output 
 df = pd.read_csv(filename, sep="\t")
 
 # --- Save configuration to text file for record-keeping ---
