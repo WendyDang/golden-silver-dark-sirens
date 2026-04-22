@@ -11,7 +11,7 @@
 mkdir -p logs
 
 source "$(conda info --base)/etc/profile.d/conda.sh"
-conda activate /hildafs/projects/phy220048p/dangy/bilby-env
+conda activate /hildafs/projects/phy220048p/dangy/gwcosmo
 
 cd /hildafs/projects/phy220048p/share/gwbench_dark_siren/golden-silver-dark-sirens
 

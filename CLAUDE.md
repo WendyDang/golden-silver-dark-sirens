@@ -92,6 +92,19 @@ Set via `selection_effects` variable in `SDS_bilby.py`.
 
 Events with `df['DL'][i] >= 980` Mpc are skipped (no host found within catalog).
 
+## Conda environment
+
+Analysis environment: `/hildafs/projects/phy220048p/dangy/gwcosmo`
+
+Activate with:
+```
+conda activate /hildafs/projects/phy220048p/dangy/gwcosmo
+```
+
+Built from scratch (not derived from bilby-env). Package cache stored in
+`/hildafs/projects/phy220048p/dangy/conda_pkgs` to avoid home-directory quota.
+Key versions: Python 3.11, numpy 2.4, astropy 7.2, bilby 2.8, ligo.skymap 2.5, healpy 1.19.
+
 ## Git workflow
 
 - Remote: `https://github.com/WendyDang/golden-silver-dark-sirens`
