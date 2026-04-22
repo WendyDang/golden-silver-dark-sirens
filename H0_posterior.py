@@ -61,14 +61,14 @@ def H0_posterior(
     # --- Selection function ---
     if selection_label == "default":
         beta_H0 = H0_grid**3
-        beta_H0 = beta_H0 / np.trapz(beta_H0, H0_grid)
+        beta_H0 = beta_H0 / np.trapezoid(beta_H0, H0_grid)
 
     else:
         if selection_label not in beta_dict:
             raise ValueError(f"Unknown selection_label: {selection_label}")
 
         beta_vals = beta_dict[selection_label]
-        beta_vals = beta_vals / np.trapz(beta_vals, H0_beta)
+        beta_vals = beta_vals / np.trapezoid(beta_vals, H0_beta)
 
         beta_interp = interp1d(
             H0_beta,
@@ -193,7 +193,7 @@ def H0_posterior(
     # Selection effect correction and normalization
     
     H0_likelihood /= beta_H0
-    H0_likelihood /= np.trapz(H0_likelihood, H0_grid)
+    H0_likelihood /= np.trapezoid(H0_likelihood, H0_grid)
 
     return H0_likelihood
 

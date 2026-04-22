@@ -165,7 +165,7 @@ if H0_likelihoods_dict:
     joint_H0_likelihood = np.ones_like(H0_grid)
     for like in H0_likelihoods_dict.values():
         joint_H0_likelihood *= like
-    joint_H0_posterior = joint_H0_likelihood / np.trapz(joint_H0_likelihood, H0_grid)
+    joint_H0_posterior = joint_H0_likelihood / np.trapezoid(joint_H0_likelihood, H0_grid)
 else:
     print("No events processed successfully.")
     joint_H0_posterior = np.zeros_like(H0_grid)
