@@ -31,12 +31,44 @@ All paths in the code are relative to this directory unless stated otherwise.
 | `h0_likelihood_output` | `GDS_sharp_HLI/H0_likelihoods_sf.npz` | Saved H0 likelihoods and joint posterior |
 | `config_file` | `GDS_sharp_HLI/config_<timestamp>.txt` | Run configuration log |
 
-## Galaxy catalog
+## External data paths (read-only, outside repo)
+
+### Bilby PE results
+```
+/hildafs/projects/phy220048p/share/gwbench_dark_siren/bilby_result/
+├── Ucchuu_golden_injection_list_HsLsIs.csv   # event table for golden sirens (HsLsIs network)
+├── Ucchuu_silver_injection_list_HsLsIs.csv   # event table for silver sirens (HsLsIs network)
+├── Ucchuu_1year_injection_list_HpLpVp.csv    # event table for 1-year run (HpLpVp network)
+├── Ucchuu_golden_A#/inj_<N>/bilby_inj_<N>_result.json   # golden siren PE results
+├── Ucchuu_silver_A#/inj_<N>/bilby_inj_<N>_result.json   # silver siren PE results
+└── Ucchuu_1year_A+/inj_<N>/bilby_inj_<N>_result.json    # 1-year PE results
+```
+
+Injection list CSV columns: `DL, HostHaloID, Mc, chi1x/y/z, chi2x/y/z, dec, eta, iota, log_DL, log_Mc, phic, psi, ra, tc, z, sky_area_90, snr, cov_dL_ra, cov_dL_dec, cov_ra_dec, err_dL, err_ra, err_dec, m1, m2, network`
+
+Each `inj_<N>/` folder contains: `bilby_inj_<N>_result.json` (main PE output), `.log`, `_corner.png`, `_resume.pickle`, `_dynesty.pickle`, checkpoint PNGs.
+
+### Uchuu galaxy catalog
+```
+/hildafs/projects/phy220048p/share/Uchuu/z_0.5_healpix_catalog/
+└── healpix_000000.parquet … healpix_049151.parquet   (~49,152 files, z < 0.5)
+```
+
+Read with `pyarrow.parquet` → pandas. See `/hildafs/home/dangy/Ucchuu_injection/draw_host_galaxies.py` for the reference reading pattern.
+
+Key columns: `ra` (deg), `dec` (deg), `zcos` (cosmological redshift), `HostHaloID`, `MstarBulge` (M_sun), `MstarDisk` (M_sun).
+
+Derived: `stellar_mass = MstarBulge + MstarDisk`. Host selection is weighted by stellar mass, min-max normalised to [1e8, 1e12] M_sun.
+
+**Important:** the Uchuu catalog uses `zcos` for redshift; the current code references `z_hetdex` (from COSMOS). When adapting the pipeline to Uchuu, map `zcos` → wherever `z_hetdex` is read.
+
+## Galaxy catalog (current: COSMOS)
 
 - **Catalog**: COSMOS (FITS format, read via `astropy.io.fits` / `astropy.table.Table`)
 - Set `catalog_choice` in `SDS_bilby.py` and fill in `_catalog_paths` dict with the actual file path.
 - Required columns: `ra` (deg), `dec` (deg), `z_hetdex`, `gmag`, optionally `mag_abs`.
 - The catalog is **spatially shifted** per event so its center aligns with the injection sky position.
+- Future plan: replace with Uchuu catalog (see above); redshift column changes from `z_hetdex` → `zcos`.
 
 ## H0 grid
 
