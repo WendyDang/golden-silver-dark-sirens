@@ -333,26 +333,28 @@ def find_galaxies_in_sky_and_distance_CI_healpix(
     galaxies_selected = em_catalog[final_selection]
     
     if injected_idx is not None and 0 <= injected_idx < len(em_catalog):
-        survived_sky = inside_sky[injected_idx]
-        survived_dl  = inside_dl[injected_idx]
+        survived_sky   = inside_sky[injected_idx]
+        survived_dl    = inside_dl[injected_idx]
         survived_final = final_selection[injected_idx]
 
-    if survived_final:
-        print(f"✅ Injected galaxy at index {injected_idx} SURVIVED all cuts.")
-    else:
-        print(f"❌ Injected galaxy at index {injected_idx} FAILED selection.")
-        if not survived_sky and not survived_dl:
-            print("   → Failed both sky and distance cuts.")
-            print(f"90% CI distance corresponds to z ∈ [{z_min_all:.4f}, {z_max_all:.4f}] over H0∈[60,80]")
-
-        elif not survived_sky:
-            print("   → Failed the sky localization cut.")
-        elif not survived_dl:
-            print("   → Failed the luminosity distance cut.")
-            print(f"90% CI distance corresponds to z ∈ [{z_min_all:.4f}, {z_max_all:.4f}] over H0∈[60,80]")
-            print(f"Injected galaxy z: {em_catalog['zcos'][injected_idx]:.4f}")
+        if survived_final:
+            print(f"✅ Injected galaxy at index {injected_idx} SURVIVED all cuts.")
         else:
-            print(f"⚠️ Invalid injected_idx ({injected_idx}) or out of bounds.")
+            print(f"❌ Injected galaxy at index {injected_idx} FAILED selection.")
+            if not survived_sky and not survived_dl:
+                print("   → Failed both sky and distance cuts.")
+                print(f"90% CI distance corresponds to z ∈ [{z_min_all:.4f}, {z_max_all:.4f}] over H0∈[60,80]")
+            elif not survived_sky:
+                print("   → Failed the sky localization cut.")
+            elif not survived_dl:
+                print("   → Failed the luminosity distance cut.")
+                print(f"90% CI distance corresponds to z ∈ [{z_min_all:.4f}, {z_max_all:.4f}] over H0∈[60,80]")
+                print(f"Injected galaxy z: {em_catalog['zcos'][injected_idx]:.4f}")
+    else:
+        if injected_idx is None:
+            print("⚠️ Host galaxy not found in loaded tiles — survival check skipped.")
+        else:
+            print(f"⚠️ injected_idx={injected_idx} out of bounds (catalog len={len(em_catalog)}).")
 
 
 
