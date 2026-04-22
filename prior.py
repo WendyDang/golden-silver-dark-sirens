@@ -27,7 +27,7 @@ pi_dl = dVc_dz / ((1 + z) * ddl_dz)
 pi_dl_interp = interp1d(dl, pi_dl, bounds_error=False, fill_value=0.0)
 
 # Normalise once over the full dL range so the denominator is constant
-_norm = np.trapz(pi_dl, dl)
+_norm = np.trapezoid(pi_dl, dl)
 
 def prior_dl(dl_val):
     return pi_dl_interp(dl_val) / _norm
