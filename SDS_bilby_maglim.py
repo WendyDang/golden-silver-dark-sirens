@@ -296,6 +296,22 @@ for fname in tqdm(result_files, desc="Events"):
 log.info(f"\n{'='*60}")
 log.info("All events processed. Saving results...")
 
+# ── Credible-interval helper ────────────────────────────────────────────────────
+def credible_interval(H0_grid, posterior, level=0.68):
+    """
+    Return (lower, upper, median) equal-tailed credible interval at `level`.
+    Uses the trapezoid CDF so it is independent of grid spacing.
+    """
+    dH = np.diff(H0_grid)
+    # midpoint-rule CDF
+    cdf = np.concatenate([[0], np.cumsum(0.5 * (posterior[:-1] + posterior[1:]) * dH)])
+    cdf /= cdf[-1]
+    tail = (1.0 - level) / 2.0
+    lo  = np.interp(tail,        cdf, H0_grid)
+    hi  = np.interp(1.0 - tail,  cdf, H0_grid)
+    med = np.interp(0.5,         cdf, H0_grid)
+    return lo, hi, med
+
 # ── Save per-mag-limit results ──────────────────────────────────────────────────
 for m_lim in MAG_LIMITS:
     out_dir  = os.path.join(OUTPUT_ROOT, f"mlim_{m_lim}")
@@ -327,6 +343,19 @@ for m_lim in MAG_LIMITS:
     for name, like in h0_dict.items():
         ax.plot(H0_GRID, like, alpha=0.4, lw=1, label=name)
     ax.plot(H0_GRID, joint, color="k", lw=2.5, label="Joint posterior")
+
+    if np.any(joint > 0):
+        lo95, hi95, med = credible_interval(H0_GRID, joint, level=0.95)
+        lo68, hi68, _   = credible_interval(H0_GRID, joint, level=0.68)
+        ax.fill_between(H0_GRID, 0, joint,
+                        where=(H0_GRID >= lo95) & (H0_GRID <= hi95),
+                        color="k", alpha=0.10, label=f"95% CI [{lo95:.1f}, {hi95:.1f}]")
+        ax.fill_between(H0_GRID, 0, joint,
+                        where=(H0_GRID >= lo68) & (H0_GRID <= hi68),
+                        color="k", alpha=0.20, label=f"68% CI [{lo68:.1f}, {hi68:.1f}]")
+        ax.axvline(med, color="k", ls=":", lw=1.5, label=f"Median {med:.1f}")
+        log.info(f"[mlim={m_lim}] Joint CI: median={med:.2f}, 68%=[{lo68:.2f},{hi68:.2f}], 95%=[{lo95:.2f},{hi95:.2f}]")
+
     ax.axvline(70, color="gray", ls="--", lw=1, label=r"$H_0 = 70$")
     ax.set_xlabel(r"$H_0$ [km/s/Mpc]", fontsize=13)
     ax.set_ylabel(r"$p(H_0)$", fontsize=13)
@@ -349,8 +378,23 @@ for m_lim, color in zip(MAG_LIMITS, colors):
     npz   = np.load(os.path.join(OUTPUT_ROOT, f"mlim_{m_lim}", "H0_likelihoods.npz"))
     joint = npz["joint_H0_posterior"]
     n_ev  = len(H0_dicts[m_lim])
-    ax.plot(H0_GRID, joint, color=color, lw=2,
-            label=rf"$r \leq {m_lim}$ ({n_ev} events)")
+
+    if np.any(joint > 0):
+        lo95, hi95, med = credible_interval(H0_GRID, joint, level=0.95)
+        lo68, hi68, _   = credible_interval(H0_GRID, joint, level=0.68)
+        ax.fill_between(H0_GRID, 0, joint,
+                        where=(H0_GRID >= lo95) & (H0_GRID <= hi95),
+                        color=color, alpha=0.10)
+        ax.fill_between(H0_GRID, 0, joint,
+                        where=(H0_GRID >= lo68) & (H0_GRID <= hi68),
+                        color=color, alpha=0.25)
+        ax.axvline(med, color=color, ls=":", lw=1.2)
+        label = rf"$r \leq {m_lim}$ ({n_ev} ev) — med={med:.1f}, 68%=[{lo68:.1f},{hi68:.1f}]"
+    else:
+        label = rf"$r \leq {m_lim}$ (no events)"
+
+    ax.plot(H0_GRID, joint, color=color, lw=2, label=label)
+
 ax.axvline(70, color="gray", ls="--", lw=1, label=r"$H_0 = 70$")
 ax.set_xlabel(r"$H_0$ [km/s/Mpc]", fontsize=14)
 ax.set_ylabel(r"$p(H_0)$", fontsize=14)
@@ -359,7 +403,7 @@ ax.set_title(
     f"(first {N_EVENTS} silver injections, {APP_MAG_COL})",
     fontsize=13,
 )
-ax.legend(fontsize=12)
+ax.legend(fontsize=10)
 ax.grid(True, alpha=0.3)
 fig.tight_layout()
 cmp_path = os.path.join(OUTPUT_ROOT, "comparison_H0_posteriors.png")
