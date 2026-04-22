@@ -4,42 +4,50 @@ import numpy as np
 from scipy.stats import gaussian_kde
 from astropy.cosmology import FlatLambdaCDM
 import astropy.units as u
-from tqdm import tqdm
 from prior import prior_dl
-
 
 
 def H0_likelihood(
     ra_samples,
-    dec_samples, 
+    dec_samples,
     dL_samples,
     galaxy_catalog,
     H0_grid=np.linspace(60, 80, 20)):
     """
     Compute normalized GW likelihood per galaxy and H0.
+
+    Vectorized implementation: one cosmology call per H0 over all galaxies,
+    and a single batched KDE evaluation for all (galaxy, H0) pairs.
+
+    Returns
+    -------
+    array of shape (n_galaxies, n_H0)
     """
-    # Build KDE
     samples = np.vstack([ra_samples, dec_samples, dL_samples])
     kde = gaussian_kde(samples)
-
-    # Precompute cosmologies
     cosmologies = [FlatLambdaCDM(H0=H0, Om0=0.3) for H0 in H0_grid]
 
-    H0_likelihood = np.zeros((len(galaxy_catalog), len(H0_grid)))
+    N_gal = len(galaxy_catalog)
+    N_H0  = len(H0_grid)
 
-    for j, galaxy in enumerate(tqdm(galaxy_catalog, desc="Galaxies")):
-        # Precompute distances for all H0 at once
-        z = galaxy['zcos']
-        dL_gals = np.array([cosmo.luminosity_distance(z).to(u.Mpc).value for cosmo in cosmologies])
+    z_gals   = np.array(galaxy_catalog['zcos'])
+    ra_gals  = np.radians(np.array(galaxy_catalog['ra']))
+    dec_gals = np.radians(np.array(galaxy_catalog['dec']))
 
-        # Stack points for KDE
-        ras = np.full(len(H0_grid), np.radians(galaxy['ra']))
-        decs = np.full(len(H0_grid), np.radians(galaxy['dec']))
-        points = np.vstack([ras, decs, dL_gals])  # shape (3, len(H0_grid))
+    # One vectorized dL call per cosmology over all galaxies → (N_gal, N_H0)
+    dL_matrix = np.column_stack([
+        cosmo.luminosity_distance(z_gals).to(u.Mpc).value
+        for cosmo in cosmologies
+    ])
 
-        # Evaluate in batch
-        probs = kde(points) / prior_dl(dL_gals)
+    # All KDE evaluation points in one shot: (3, N_H0 * N_gal)
+    # Layout: first N_gal entries are all galaxies at H0[0], next block at H0[1], etc.
+    ra_all  = np.tile(ra_gals, N_H0)
+    dec_all = np.tile(dec_gals, N_H0)
+    dL_all  = dL_matrix.T.ravel()       # (N_H0, N_gal) flattened row-major
 
-        H0_likelihood[j, :] = probs
+    probs_all  = kde(np.vstack([ra_all, dec_all, dL_all]))
+    probs_all /= prior_dl(dL_all)
 
-    return H0_likelihood
+    # Reshape to (N_gal, N_H0)
+    return probs_all.reshape(N_H0, N_gal).T

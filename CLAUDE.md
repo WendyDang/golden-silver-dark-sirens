@@ -15,6 +15,7 @@ All paths in the code are relative to this directory unless stated otherwise.
 | File | Purpose |
 |------|---------|
 | `SDS_bilby.py` | Main entry point. Loops over GW events, calls galaxy selection, likelihood, and posterior. |
+| `SDS_bilby_maglim.py` | Magnitude-cut study variant. Runs the first `N_EVENTS` silver injections with three apparent-magnitude thresholds (19, 21, 23 in `AppMagStard_SDSSr`). Loads Uchuu tiles once per event, applies each cut independently, and saves per-cut results under `maglim_study/mlim_{19,21,23}/`. See "Magnitude-cut study" section below. |
 | `find_gal_in_CI_varying_H0.py` | Selects galaxies within the sky + distance credible region of a GW event. Three implementations: basic (`find_galaxies_in_sky_and_distance_CI`), grid-KDE fast version (`find_galaxies_in_sky_and_distance_CI_fast`), and HEALPix version (`find_galaxies_in_sky_and_distance_CI_healpix`). The HEALPix version is the one used in production. |
 | `H0_likelihood.py` | Computes the GW likelihood per galaxy per H0 using a 3D Gaussian KDE over (RA, Dec, dL) samples. Returns array of shape `(n_galaxies, n_H0)`. |
 | `H0_posterior.py` | Marginalizes galaxy likelihoods into an H0 posterior, applies selection-effect correction (`beta_H0`), and optionally applies luminosity weighting. |
@@ -56,7 +57,28 @@ Each `inj_<N>/` folder contains: `bilby_inj_<N>_result.json` (main PE output), `
 
 Read with `pyarrow.parquet` → pandas. See `/hildafs/home/dangy/Ucchuu_injection/draw_host_galaxies.py` for the reference reading pattern.
 
-Key columns: `ra` (deg), `dec` (deg), `zcos` (cosmological redshift), `HostHaloID`, `MstarBulge` (M_sun), `MstarDisk` (M_sun).
+#### Full parquet column schema
+
+| Column | Description |
+|--------|-------------|
+| `ra`, `dec` | Position (degrees) |
+| `zcos` | Cosmological redshift |
+| `zobs` | Observed redshift (includes peculiar velocity) |
+| `vlos` | Line-of-sight velocity |
+| `HostHaloID`, `MainHaloID` | Halo identifiers |
+| `MstarBulge`, `MstarDisk` | Stellar mass components (M_sun) |
+| `HaloMass` | Total halo mass |
+| `SFR` | Star formation rate |
+| `Mbh` | Black hole mass |
+| `Mhot`, `McoldBulge`, `McoldDisk` | Gas mass components |
+| `MZgasDisk`, `ZstarBulge`, `ZstarDisk` | Metallicities |
+| `MeanAgeStars` | Mean stellar age |
+| `Concentration` | Halo concentration |
+| `GalaxyType` | Galaxy morphology type |
+| `LumAgnBol`, `LumAgnXray`, `MagAgnUV` | AGN luminosities |
+| `AppMagStard_SDSSg/r/i/u/z` | **Apparent magnitudes**, SDSS bands (disk component) |
+| `MagStar_SDSSg/r/i/u/z` | **Absolute magnitudes**, SDSS bands (total stellar) |
+| `MagStard_SDSSg/r/i/u/z` | Absolute magnitudes, SDSS bands (disk component) |
 
 Derived: `stellar_mass = MstarBulge + MstarDisk`. Host selection is weighted by stellar mass, min-max normalised to [1e8, 1e12] M_sun.
 
@@ -69,6 +91,36 @@ Derived: `stellar_mass = MstarBulge + MstarDisk`. Host selection is weighted by 
 - Required columns: `ra` (deg), `dec` (deg), `z_hetdex`, `gmag`, optionally `mag_abs`.
 - The catalog is **spatially shifted** per event so its center aligns with the injection sky position.
 - Future plan: replace with Uchuu catalog (see above); redshift column changes from `z_hetdex` → `zcos`.
+
+## Magnitude-cut study (`SDS_bilby_maglim.py`)
+
+Tests how apparent-magnitude-limited galaxy samples affect the H0 posterior. This is an ongoing investigation; only a pilot run (first 10 silver events) has been set up so far.
+
+**Design:** Uchuu tiles are loaded once per event; each of the three magnitude cuts is applied independently to the CI-selected galaxy sample. The absolute magnitude is already available in the catalog (`MagStar_SDSSr`), so no distance-based conversion is needed.
+
+| Parameter | Value |
+|-----------|-------|
+| Apparent magnitude column | `AppMagStard_SDSSr` |
+| Absolute magnitude column (diagnostics) | `MagStar_SDSSr` |
+| Magnitude limits tested | 19, 21, 23 |
+| Events | First 10 silver injections (`Ucchuu_silver_A#`) |
+
+**Output layout** (root: `maglim_study/`):
+```
+maglim_study/
+├── config_<timestamp>.txt        # run parameters
+├── run_<timestamp>.log           # full event-by-event log
+├── sky_maps/                     # per-event sky maps (shared; generated once)
+├── mlim_19/
+│   ├── H0_likelihoods.npz        # H0_grid, joint_H0_posterior, event_<N>, ...
+│   ├── H0_posteriors.png
+│   └── per_event_stats.csv       # n_in_CI, n_after_cut, frac_kept, med_app_mag,
+│                                 # med_abs_mag, host_in_CI, host_survives_cut,
+│                                 # host_app_mag, host_abs_mag
+├── mlim_21/  (same structure)
+├── mlim_23/  (same structure)
+└── comparison_H0_posteriors.png  # joint posteriors for all three cuts overlaid
+```
 
 ## H0 grid
 
