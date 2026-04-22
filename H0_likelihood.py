@@ -29,7 +29,7 @@ def H0_likelihood(
 
     for j, galaxy in enumerate(tqdm(galaxy_catalog, desc="Galaxies")):
         # Precompute distances for all H0 at once
-        z = galaxy['z_hetdex']
+        z = galaxy['zcos']
         dL_gals = np.array([cosmo.luminosity_distance(z).to(u.Mpc).value for cosmo in cosmologies])
 
         # Stack points for KDE

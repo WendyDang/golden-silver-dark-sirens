@@ -66,7 +66,7 @@ def find_galaxies_in_sky_and_distance_CI(ra_samples, dec_samples, dL_samples, em
     low_dl, high_dl = np.percentile(dL_samples, [(1 - ci_level) / 2 * 100,
                                                  (1 + ci_level) / 2 * 100])
 
-    z_gal = em_catalog['z_hetdex']
+    z_gal = em_catalog['zcos']
 
     def in_dl_CI_for_any_H0(z):
         for H0 in H0_values:
@@ -179,7 +179,7 @@ def find_galaxies_in_sky_and_distance_CI_fast(
         dL_samples, [(1 - ci_level) / 2 * 100, (1 + ci_level) / 2 * 100]
     )
 
-    z_gal = em_catalog['z_hetdex']
+    z_gal = em_catalog['zcos']
     inside_dl = np.zeros_like(z_gal, dtype=bool)
 
     # Vectorized loop over cosmologies
@@ -319,7 +319,7 @@ def find_galaxies_in_sky_and_distance_CI_healpix(
     z_max_all = np.max(z_max_list)
 
     # --- Apply selection ---
-    z_gal = em_catalog["z_hetdex"]
+    z_gal = em_catalog["zcos"]
     inside_dl = (z_gal >= z_min_all) & (z_gal <= z_max_all)
 
     # print(f"90% CI distance corresponds to z ∈ [{z_min_all:.4f}, {z_max_all:.4f}] over H0∈[60,80]")
@@ -350,7 +350,7 @@ def find_galaxies_in_sky_and_distance_CI_healpix(
         elif not survived_dl:
             print("   → Failed the luminosity distance cut.")
             print(f"90% CI distance corresponds to z ∈ [{z_min_all:.4f}, {z_max_all:.4f}] over H0∈[60,80]")
-            print(f"Injected galaxy z: {em_catalog['z_hetdex'][injected_idx]:.4f}")
+            print(f"Injected galaxy z: {em_catalog['zcos'][injected_idx]:.4f}")
         else:
             print(f"⚠️ Invalid injected_idx ({injected_idx}) or out of bounds.")
 
@@ -366,7 +366,7 @@ def find_galaxies_in_sky_and_distance_CI_healpix(
                         dec=em_catalog['dec'][final_selection] * u.deg)
         gal_true = SkyCoord(ra=em_catalog['ra'][injected_idx] * u.deg, dec=em_catalog['dec'][injected_idx] * u.deg)
 
-        z_sel = em_catalog['z_hetdex'][final_selection]
+        z_sel = em_catalog['zcos'][final_selection]
         ra_center = np.median(ra_samples)
         dec_center = np.median(dec_samples)
         center_coord = SkyCoord(ra=ra_center * u.rad, dec=dec_center * u.rad)
@@ -387,14 +387,14 @@ def find_galaxies_in_sky_and_distance_CI_healpix(
         cosmo = FlatLambdaCDM(H0=H0, Om0=Om0)
 
         # --- Galaxy redshifts ---
-        z_gal = em_catalog['z_hetdex'][final_selection]
+        z_gal = em_catalog['zcos'][final_selection]
         #print("z_selected:", z_gal)
 
         # # --- Convert galaxy redshifts to luminosity distance (Mpc) ---
         # DL_gal = cosmo.luminosity_distance(z_gal).to('Mpc').value
 
         # --- Compute closeness relative to injected distance ---
-        closeness = np.abs((z_gal - em_catalog['z_hetdex'][injected_idx]) / em_catalog['z_hetdex'][injected_idx]) * 100
+        closeness = np.abs((z_gal - em_catalog['zcos'][injected_idx]) / em_catalog['zcos'][injected_idx]) * 100
         
 
 

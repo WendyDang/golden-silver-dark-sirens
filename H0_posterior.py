@@ -89,10 +89,10 @@ def H0_posterior(
     if luminosity_weight:
         weights_list = []
 
-        for j in range(len(gw_likelihood)):
+        for j in range(len(H0_likelihood)):
             # Get single galaxy data
             gmag = galaxy_catalog[gmag_key][j]
-            z_gal = galaxy_catalog['z_hetdex'][j]
+            z_gal = galaxy_catalog['zcos'][j]
 
             # Compute luminosity distance (Mpc → pc)
             dL_gal = cosmo.luminosity_distance(z_gal).to('Mpc').value
@@ -126,7 +126,7 @@ def H0_posterior(
     #     weights_list = []
     #     logL_gal_list = []
 
-    #     for j in range(len(gw_likelihood)):
+    #     for j in range(len(H0_likelihood)):
     #         gmag = galaxy_catalog[gmag_key][j]
     #         z_gal = galaxy_catalog['z_hetdex'][j]
     #         dL_gal = cosmo.luminosity_distance(z_gal).to('Mpc').value
@@ -179,7 +179,7 @@ def H0_posterior(
 
     # --- CASE 3: no luminosity weighting ---
     else:
-        weights = np.ones(gw_likelihood.shape[0])
+        weights = np.ones(H0_likelihood.shape[0])
 
 
 
@@ -188,7 +188,7 @@ def H0_posterior(
     print("Shape of final weights:", weights.shape)
 
 
-    H0_likelihood = np.sum(gw_likelihood.T * weights, axis=1)
+    H0_likelihood = np.sum(H0_likelihood.T * weights, axis=1)
    
     # Selection effect correction and normalization
     
