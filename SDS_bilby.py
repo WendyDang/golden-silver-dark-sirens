@@ -121,12 +121,7 @@ for fname in tqdm(result_files, desc="Processing events"):
         print(f"  No Uchuu galaxies loaded for injection {inj_num}, skipping.")
         continue
 
-    # Find the injected host galaxy index by HostHaloID
-    host_id    = row['HostHaloID']
-    host_match = np.where(catalog['HostHaloID'] == host_id)[0]
-    injected_idx = int(host_match[0]) if len(host_match) > 0 else None
-    if injected_idx is None:
-        print(f"  Warning: host HostHaloID={host_id} not found in loaded tiles for inj {inj_num}.")
+    host_id = row['HostHaloID']
 
     # Galaxy selection within sky + distance CI.
     # nside=1024 (~0.003 sq deg/pixel) resolves the <0.1 sq deg sky areas
@@ -134,7 +129,7 @@ for fname in tqdm(result_files, desc="Processing events"):
     galaxies_in_CI, area_90 = find_galaxies_in_sky_and_distance_CI_healpix(
         ra_samples, dec_samples, dL_samples,
         catalog,
-        injected_idx=injected_idx,
+        host_halo_id=host_id,
         ci_level=ci_level,
         nside=1024,
         show_plot=True,

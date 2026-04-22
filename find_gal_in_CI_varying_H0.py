@@ -213,7 +213,7 @@ def find_galaxies_in_sky_and_distance_CI_fast(
 
 def find_galaxies_in_sky_and_distance_CI_healpix(
     ra_samples, dec_samples, dL_samples, em_catalog,
-    ci_level=0.9, show_plot=False, nside=1024, injected_idx=None, event_id=None, save_dir=None
+    ci_level=0.9, show_plot=False, nside=1024, host_halo_id=None, event_id=None, save_dir=None
 ):
     """
     Accelerated version:
@@ -331,30 +331,34 @@ def find_galaxies_in_sky_and_distance_CI_healpix(
     # -------------------------------
     final_selection = inside_sky & inside_dl
     galaxies_selected = em_catalog[final_selection]
-    
-    if injected_idx is not None and 0 <= injected_idx < len(em_catalog):
+
+    # Resolve HostHaloID → positional index once for use in survival check and plotting
+    injected_idx = None
+    if host_halo_id is not None:
+        match = np.where(em_catalog['HostHaloID'] == host_halo_id)[0]
+        if len(match) == 0:
+            print(f"⚠️ HostHaloID={host_halo_id} not found in loaded tiles — survival check skipped.")
+        else:
+            injected_idx = int(match[0])
+
+    if injected_idx is not None:
         survived_sky   = inside_sky[injected_idx]
         survived_dl    = inside_dl[injected_idx]
         survived_final = final_selection[injected_idx]
 
         if survived_final:
-            print(f"✅ Injected galaxy at index {injected_idx} SURVIVED all cuts.")
+            print(f"✅ Host (HostHaloID={host_halo_id}) SURVIVED all cuts.")
         else:
-            print(f"❌ Injected galaxy at index {injected_idx} FAILED selection.")
+            print(f"❌ Host (HostHaloID={host_halo_id}) FAILED selection.")
             if not survived_sky and not survived_dl:
                 print("   → Failed both sky and distance cuts.")
-                print(f"90% CI distance corresponds to z ∈ [{z_min_all:.4f}, {z_max_all:.4f}] over H0∈[60,80]")
+                print(f"   90% CI distance corresponds to z ∈ [{z_min_all:.4f}, {z_max_all:.4f}] over H0∈[60,80]")
             elif not survived_sky:
                 print("   → Failed the sky localization cut.")
             elif not survived_dl:
                 print("   → Failed the luminosity distance cut.")
-                print(f"90% CI distance corresponds to z ∈ [{z_min_all:.4f}, {z_max_all:.4f}] over H0∈[60,80]")
-                print(f"Injected galaxy z: {em_catalog['zcos'][injected_idx]:.4f}")
-    else:
-        if injected_idx is None:
-            print("⚠️ Host galaxy not found in loaded tiles — survival check skipped.")
-        else:
-            print(f"⚠️ injected_idx={injected_idx} out of bounds (catalog len={len(em_catalog)}).")
+                print(f"   90% CI distance corresponds to z ∈ [{z_min_all:.4f}, {z_max_all:.4f}] over H0∈[60,80]")
+                print(f"   Host galaxy zcos: {em_catalog['zcos'][injected_idx]:.4f}")
 
 
 
@@ -366,7 +370,7 @@ def find_galaxies_in_sky_and_distance_CI_healpix(
         gal_all = SkyCoord(ra=em_catalog['ra'] * u.deg, dec=em_catalog['dec'] * u.deg)
         gal_sel = SkyCoord(ra=em_catalog['ra'][final_selection] * u.deg,
                         dec=em_catalog['dec'][final_selection] * u.deg)
-        gal_true = SkyCoord(ra=em_catalog['ra'][injected_idx] * u.deg, dec=em_catalog['dec'][injected_idx] * u.deg)
+        gal_true = SkyCoord(ra=em_catalog['ra'][injected_idx] * u.deg, dec=em_catalog['dec'][injected_idx] * u.deg) if injected_idx is not None else None
 
         z_sel = em_catalog['zcos'][final_selection]
         ra_center = np.median(ra_samples)
@@ -396,7 +400,10 @@ def find_galaxies_in_sky_and_distance_CI_healpix(
         # DL_gal = cosmo.luminosity_distance(z_gal).to('Mpc').value
 
         # --- Compute closeness relative to injected distance ---
-        closeness = np.abs((z_gal - em_catalog['zcos'][injected_idx]) / em_catalog['zcos'][injected_idx]) * 100
+        if injected_idx is not None:
+            closeness = np.abs((z_gal - em_catalog['zcos'][injected_idx]) / em_catalog['zcos'][injected_idx]) * 100
+        else:
+            closeness = np.zeros(len(z_gal))
         
 
 
@@ -416,9 +423,10 @@ def find_galaxies_in_sky_and_distance_CI_healpix(
             transform=ax.get_transform('world'),
             color='gray', s=1, alpha=0.3, label='All galaxies'
         )
-        ax.scatter(gal_true.ra, gal_true.dec,
-                   color='green', s=200, marker='*', label='Injected Galaxy',
-                   transform=ax.get_transform('world'))
+        if gal_true is not None:
+            ax.scatter(gal_true.ra, gal_true.dec,
+                       color='green', s=200, marker='*', label='Injected Galaxy',
+                       transform=ax.get_transform('world'))
 
         # --- Plot selected galaxies color-coded by redshift ---
         sc = ax.scatter(
