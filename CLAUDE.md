@@ -164,6 +164,8 @@ Key versions: Python 3.11, numpy 2.4, astropy 7.2, bilby 2.8, ligo.skymap 2.5, h
 - All feature additions are committed here so Claude-assisted changes are tracked.
 - Commit after each meaningful change; include a short description of what was added or fixed.
 
+**Important for Claude:** After any significant script change (new feature, bug fix, performance optimization, new analysis script), always propose a `git commit` and ask the user to confirm before proceeding. Use the change summary as the commit message body.
+
 ## Dependencies
 
 `numpy`, `scipy`, `pandas`, `matplotlib`, `astropy`, `bilby`, `healpy`, `ligo.skymap`, `tqdm`
