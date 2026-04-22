@@ -81,9 +81,10 @@ def load_uchuu_for_event(ra_samples, dec_samples, ci_level=0.9):
     cl          = find_greedy_credible_levels(prob_map)
     inside_high = np.where(cl <= ci_level)[0]
 
-    # Downgrade nside=2048 CI pixels to nside=64 catalog tiles
+    # Downgrade nside=2048 CI pixels to nside=64 catalog tiles.
+    # Uchuu parquet files are named by NESTED pixel ID.
     theta_c, phi_c = hp.pix2ang(2048, inside_high)
-    cat_pixels = np.unique(hp.ang2pix(UCHUU_NSIDE, theta_c, phi_c))
+    cat_pixels = np.unique(hp.ang2pix(UCHUU_NSIDE, theta_c, phi_c, nest=True))
 
     frames = []
     for pid in cat_pixels:
