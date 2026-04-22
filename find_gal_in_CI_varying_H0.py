@@ -213,7 +213,7 @@ def find_galaxies_in_sky_and_distance_CI_fast(
 
 def find_galaxies_in_sky_and_distance_CI_healpix(
     ra_samples, dec_samples, dL_samples, em_catalog,
-    ci_level=0.9, show_plot=False, nside=2048,injected_idx=None,event_id=None, save_dir=None
+    ci_level=0.9, show_plot=False, nside=1024, injected_idx=None, event_id=None, save_dir=None
 ):
     """
     Accelerated version:

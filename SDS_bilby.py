@@ -11,9 +11,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import healpy as hp
-import pyarrow.parquet as pq
 from astropy.table import Table
-from astropy.cosmology import FlatLambdaCDM
 from ligo.skymap.postprocess import find_greedy_credible_levels
 from bilby.core.result import read_in_result
 from tqdm import tqdm
@@ -21,7 +19,6 @@ from tqdm import tqdm
 from find_gal_in_CI_varying_H0 import find_galaxies_in_sky_and_distance_CI_healpix
 from H0_likelihood import H0_likelihood
 from H0_posterior import H0_posterior
-from prior import prior_dl
 
 # ── Configuration ──────────────────────────────────────────────────────────────
 CATALOG_DIR  = "/hildafs/projects/phy220048p/share/Uchuu/z_0.5_healpix_catalog"
@@ -131,12 +128,15 @@ for fname in tqdm(result_files, desc="Processing events"):
     if injected_idx is None:
         print(f"  Warning: host HostHaloID={host_id} not found in loaded tiles for inj {inj_num}.")
 
-    # Galaxy selection within sky + distance CI
+    # Galaxy selection within sky + distance CI.
+    # nside=1024 (~0.003 sq deg/pixel) resolves the <0.1 sq deg sky areas
+    # without the overhead of nside=2048.
     galaxies_in_CI, area_90 = find_galaxies_in_sky_and_distance_CI_healpix(
         ra_samples, dec_samples, dL_samples,
         catalog,
         injected_idx=injected_idx,
         ci_level=ci_level,
+        nside=1024,
         show_plot=True,
         event_id=inj_num,
         save_dir=save_dir,
