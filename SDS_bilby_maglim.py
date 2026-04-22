@@ -59,7 +59,7 @@ N_EVENTS      = 10                  # use only the first N injection numbers
 H0_GRID       = np.linspace(60, 80, 40)
 CI_LEVEL      = 0.9
 SELECTION_EFF = "HLI#S, SHELA, 0.5"
-OUTPUT_ROOT   = "maglim_study"
+OUTPUT_ROOT   = os.path.join(os.path.dirname(os.path.abspath(__file__)), "maglim_study")
 
 APP_MAG_COL   = "AppMagStard_SDSSr"  # apparent SDSS-r magnitude (disk component)
 ABS_MAG_COL   = "MagStar_SDSSr"      # absolute SDSS-r magnitude (total stellar; for diagnostics)
@@ -71,9 +71,13 @@ os.makedirs(SKY_MAP_DIR, exist_ok=True)
 for _m in MAG_LIMITS:
     os.makedirs(os.path.join(OUTPUT_ROOT, f"mlim_{_m}"), exist_ok=True)
 
-# ── Logging: file + stdout ──────────────────────────────────────────────────────
+# ── Run identifier: timestamp + SLURM job ID if available ──────────────────────
 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-log_path  = os.path.join(OUTPUT_ROOT, f"run_{timestamp}.log")
+job_id    = os.environ.get("SLURM_JOB_ID", "local")
+run_tag   = f"{timestamp}_job{job_id}"
+
+# ── Logging: file + stdout ──────────────────────────────────────────────────────
+log_path  = os.path.join(OUTPUT_ROOT, f"run_{run_tag}.log")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s  %(levelname)s  %(message)s",
@@ -85,11 +89,12 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 # ── Top-level config file ───────────────────────────────────────────────────────
-config_path = os.path.join(OUTPUT_ROOT, f"config_{timestamp}.txt")
+config_path = os.path.join(OUTPUT_ROOT, f"config_{run_tag}.txt")
 with open(config_path, "w") as _f:
     _f.write("Magnitude-cut study — run configuration\n")
     _f.write("=" * 60 + "\n")
     _f.write(f"Timestamp        : {datetime.datetime.now().isoformat()}\n")
+    _f.write(f"SLURM job ID     : {job_id}\n")
     _f.write(f"Catalog          : Uchuu z<0.5 HEALPix ({CATALOG_DIR})\n")
     _f.write(f"Silver CSV       : {SILVER_CSV}\n")
     _f.write(f"Silver PE folder : {SILVER_FOLDER}\n")
@@ -160,16 +165,6 @@ for fname in tqdm(result_files, desc="Events"):
     log.info(f"Event inj_{inj_num}: {fname}")
 
     row = df_silver.iloc[inj_num]
-
-    # Skip events too distant for the catalog
-    if row['DL'] >= 980:
-        log.info(f"  Skipping: DL={row['DL']:.1f} >= 980 Mpc (no catalog coverage)")
-        for m in MAG_LIMITS:
-            stats_rows[m].append(dict(
-                inj_num=inj_num, DL_true=row['DL'], z_true=row['z'],
-                skipped=True, skip_reason="DL>=980",
-            ))
-        continue
 
     result    = read_in_result(fname)
     posterior = result.posterior
