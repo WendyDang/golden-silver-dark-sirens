@@ -6,6 +6,19 @@ from astropy.cosmology import FlatLambdaCDM
 import astropy.units as u
 from prior import prior_dl
 
+# Cache cosmologies keyed by the H0 grid bytes — same grid across the run,
+# so we build the FlatLambdaCDM list once.
+_COSMO_CACHE = {}
+
+
+def _cosmologies_for(H0_grid):
+    key = H0_grid.tobytes()
+    cached = _COSMO_CACHE.get(key)
+    if cached is None:
+        cached = [FlatLambdaCDM(H0=H0, Om0=0.3) for H0 in H0_grid]
+        _COSMO_CACHE[key] = cached
+    return cached
+
 
 def H0_likelihood(
     ra_samples,
@@ -25,7 +38,7 @@ def H0_likelihood(
     """
     samples = np.vstack([ra_samples, dec_samples, dL_samples])
     kde = gaussian_kde(samples)
-    cosmologies = [FlatLambdaCDM(H0=H0, Om0=0.3) for H0 in H0_grid]
+    cosmologies = _cosmologies_for(H0_grid)
 
     N_gal = len(galaxy_catalog)
     N_H0  = len(H0_grid)

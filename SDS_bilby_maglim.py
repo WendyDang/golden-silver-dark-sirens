@@ -46,6 +46,7 @@ import glob
 import argparse
 import datetime
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import pandas as pd
@@ -187,13 +188,15 @@ def load_uchuu_for_event(ra_samples, dec_samples, ci_level=0.9):
     theta_c, phi_c = hp.pix2ang(_TILE_NSIDE, inside_high)
     cat_pixels = np.unique(hp.ang2pix(UCHUU_NSIDE, theta_c, phi_c, nest=True))
 
-    frames = []
-    for pid in cat_pixels:
-        path = os.path.join(CATALOG_DIR, f"healpix_{pid:06d}.parquet")
-        if os.path.exists(path):
-            frames.append(pd.read_parquet(path))
-    if not frames:
+    paths = [os.path.join(CATALOG_DIR, f"healpix_{pid:06d}.parquet")
+             for pid in cat_pixels]
+    paths = [p for p in paths if os.path.exists(p)]
+    if not paths:
         return None
+
+    # pyarrow releases the GIL during read, so threads parallelise effectively.
+    with ThreadPoolExecutor(max_workers=min(8, len(paths))) as ex:
+        frames = list(ex.map(pd.read_parquet, paths))
 
     cat_df = pd.concat(frames, ignore_index=True)
     cat_df['stellar_mass'] = cat_df['MstarBulge'] + cat_df['MstarDisk']
@@ -256,6 +259,19 @@ for fname in tqdm(result_files, desc="Events"):
     n_in_CI = len(galaxies_in_CI)
     log.info(f"  Galaxies in CI: {n_in_CI}  |  90% sky area: {area_90:.3f} deg²")
 
+    # Pull arrays once outside the m_lim loop — used by every cut.
+    abs_mag_vals = np.asarray(galaxies_in_CI[ABS_MAG_COL])
+    ci_halo_ids  = np.asarray(galaxies_in_CI['HostHaloID'])
+    host_in_CI   = bool(np.any(ci_halo_ids == host_id))
+
+    # Compute the GW likelihood ONCE on the full CI sample. For each m_lim
+    # cut we just index the rows by mag_mask — this is the dominant speedup.
+    if n_in_CI > 0:
+        gw_likes_full = H0_likelihood(ra_samp, dec_samp, dL_samp,
+                                      galaxies_in_CI, H0_GRID)
+    else:
+        gw_likes_full = None
+
     # ── Inner loop: each m_lim defines a volume-limited subcatalog of depth M_lim ─
     for m_lim in APP_MAG_LIMITS:
         M_lim = m_lim - mu_high
@@ -284,34 +300,15 @@ for fname in tqdm(result_files, desc="Events"):
             )})
             continue
 
-        # Absolute magnitude cut on the CI sample
-        if ABS_MAG_COL in galaxies_in_CI.colnames:
-            abs_mag_vals = np.array(galaxies_in_CI[ABS_MAG_COL])
-            mag_mask     = abs_mag_vals <= M_lim
-            gals_cut     = galaxies_in_CI[mag_mask]
-        else:
-            log.warning(f"  Column '{ABS_MAG_COL}' not found — no cut applied.")
-            gals_cut = galaxies_in_CI
-            mag_mask = np.ones(n_in_CI, dtype=bool)
+        mag_mask = abs_mag_vals <= M_lim
+        n_cut    = int(mag_mask.sum())
+        frac_kept = n_cut / n_in_CI
 
-        n_cut     = len(gals_cut)
-        frac_kept = n_cut / n_in_CI if n_in_CI > 0 else np.nan
+        med_abs = float(np.median(abs_mag_vals[mag_mask])) if n_cut > 0 else np.nan
 
-        med_abs = float(np.median(gals_cut[ABS_MAG_COL])) if n_cut > 0 and ABS_MAG_COL in gals_cut.colnames else np.nan
-
-        # Host galaxy survival through the cut
-        ci_halo_ids   = np.array(galaxies_in_CI['HostHaloID'])
-        host_in_CI    = bool(np.any(ci_halo_ids == host_id))
-        host_surv_cut = False
-        host_abs_mag  = np.nan
-
-        if host_in_CI and n_cut > 0:
-            cut_halo_ids = np.array(gals_cut['HostHaloID'])
-            host_match   = cut_halo_ids == host_id
-            if np.any(host_match):
-                host_surv_cut = True
-                if ABS_MAG_COL in gals_cut.colnames:
-                    host_abs_mag = float(gals_cut[ABS_MAG_COL][host_match][0])
+        host_match    = (ci_halo_ids == host_id) & mag_mask
+        host_surv_cut = bool(np.any(host_match))
+        host_abs_mag  = float(abs_mag_vals[host_match][0]) if host_surv_cut else np.nan
 
         log.info(
             f"    galaxies: {n_in_CI} -> {n_cut} ({frac_kept*100:.1f}% kept)"
@@ -333,8 +330,10 @@ for fname in tqdm(result_files, desc="Events"):
             stats_rows[m_lim].append(stats_entry)
             continue
 
-        # H0 likelihood and posterior
-        gw_likes = H0_likelihood(ra_samp, dec_samp, dL_samp, gals_cut, H0_GRID)
+        # Index the precomputed full-CI likelihood by the mag-cut mask;
+        # H0_posterior receives the cut catalog for its luminosity-weight branch.
+        gw_likes = gw_likes_full[mag_mask]
+        gals_cut = galaxies_in_CI[mag_mask]
         like_H0  = H0_posterior(
             gw_likes, gals_cut, H0_GRID, df_inj,
             selection_label=SELECTION_EFF,
