@@ -9,12 +9,12 @@ M_sun_g    = 5.12
 _ref_cosmo = FlatLambdaCDM(H0=70, Om0=0.3)   # reference cosmology for lum-weight branch
 
 # ── Precomputed beta(H0) source ──────────────────────────────────────────────────
-_BETA_DIR      = ("/hildafs/projects/phy220048p/share/gwbench_dark_siren/"
-                  "gwbench/beta_maglim_tests/test1_vs_events")
-_BETA_H0_GRID  = np.linspace(60, 80, 20)   # grid used in test_beta_vs_events.py
+_BETA_DIR_TEMPLATE = ("/hildafs/projects/phy220048p/share/gwbench_dark_siren/"
+                     "gwbench/beta_maglim_tests/test1_vs_events_{siren_type}")
+_BETA_H0_GRID      = np.linspace(60, 80, 20)   # grid used in test_beta_vs_events.py
 
 
-def _load_beta_from_disk(app_mag_lim, dL_high_90, h0_grid):
+def _load_beta_from_disk(app_mag_lim, dL_high_90, h0_grid, siren_type='silver'):
     """
     Load precomputed beta(H0) for the dL bin containing dL_high_90 and
     interpolate onto h0_grid.
@@ -22,9 +22,10 @@ def _load_beta_from_disk(app_mag_lim, dL_high_90, h0_grid):
     Bin edges come from bin_metadata.npz written by test_beta_vs_events.py;
     they are uniform-in-z (Planck15-mapped to dL) by construction.  Each
     event's dL_high_90 (95th-percentile of the GW dL posterior) is digitised
-    into one bin.  Files live in _BETA_DIR/mlim_{app_mag_lim}/.
+    into one bin.  Files live in test1_vs_events_{siren_type}/mlim_{app_mag_lim}/.
     """
-    meta_path = os.path.join(_BETA_DIR, f"mlim_{app_mag_lim}", 'bin_metadata.npz')
+    beta_dir  = _BETA_DIR_TEMPLATE.format(siren_type=siren_type)
+    meta_path = os.path.join(beta_dir, f"mlim_{app_mag_lim}", 'bin_metadata.npz')
     meta      = np.load(meta_path)
     dL_edges  = meta['dL_bin_edges']    # length n_bins+1
     n_bins    = len(dL_edges) - 1
@@ -33,7 +34,7 @@ def _load_beta_from_disk(app_mag_lim, dL_high_90, h0_grid):
     # 0..n_bins-1.  dL_high_90 below the first edge → bin 0; above last → last bin.
     bin_idx = int(np.clip(np.digitize(dL_high_90, dL_edges) - 1, 0, n_bins - 1))
 
-    beta_path = os.path.join(_BETA_DIR, f"mlim_{app_mag_lim}",
+    beta_path = os.path.join(beta_dir, f"mlim_{app_mag_lim}",
                              f"beta_H0_event{bin_idx}.npy")
     beta_vals = np.load(beta_path).astype(float)
 
@@ -55,7 +56,8 @@ def H0_posterior(
     self_chosen_luminosity_weight=False,
     beta_H0_precomputed=None,
     app_mag_lim=None,
-    dL_high_90=None):
+    dL_high_90=None,
+    siren_type='silver'):
     """
     Compute the H0 posterior by marginalizing over host galaxies,
     optionally with luminosity weighting.
@@ -95,7 +97,7 @@ def H0_posterior(
 
     # --- Selection function ---
     if app_mag_lim is not None:
-        beta_H0 = _load_beta_from_disk(app_mag_lim, dL_high_90, H0_grid)
+        beta_H0 = _load_beta_from_disk(app_mag_lim, dL_high_90, H0_grid, siren_type)
         beta_H0 /= np.trapezoid(beta_H0, H0_grid)
     elif beta_H0_precomputed is not None:
         beta_H0 = np.asarray(beta_H0_precomputed, dtype=float)

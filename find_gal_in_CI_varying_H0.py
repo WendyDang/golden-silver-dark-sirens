@@ -291,13 +291,17 @@ def find_galaxies_in_sky_and_distance_CI_healpix(
     # low_dl, high_dl = np.percentile(
     #     dL_samples, [(1 - 0.99) / 2 * 100, (1 + 0.99) / 2 * 100]
     # )
-    # Forward vectorized check: for each pre-cached cosmology compute dL for all
-    # catalog galaxies and flag those within the CI bounds. Union across all H0.
-    z_gal     = np.array(em_catalog["zcos"])
-    inside_dl = np.zeros(len(z_gal), dtype=bool)
+    # Apply sky cut first so the H0 dL loop runs only on sky-selected galaxies
+    # (~1% of loaded tiles), giving ~100x fewer distance integrals.
+    z_gal        = np.array(em_catalog["zcos"])
+    sky_idx      = np.where(inside_sky)[0]
+    z_sky        = z_gal[sky_idx]
+    inside_dl_sky = np.zeros(len(sky_idx), dtype=bool)
     for cosmo_h in cosmos:
-        dL_vals    = cosmo_h.luminosity_distance(z_gal).to('Mpc').value
-        inside_dl |= (dL_vals >= low_dl) & (dL_vals <= high_dl)
+        dL_vals        = cosmo_h.luminosity_distance(z_sky).to('Mpc').value
+        inside_dl_sky |= (dL_vals >= low_dl) & (dL_vals <= high_dl)
+    inside_dl          = np.zeros(len(z_gal), dtype=bool)
+    inside_dl[sky_idx] = inside_dl_sky
 
     # print(f"90% CI distance corresponds to z ∈ [{z_min_all:.4f}, {z_max_all:.4f}] over H0∈[60,80]")
 

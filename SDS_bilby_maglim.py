@@ -283,7 +283,6 @@ for fname in tqdm(result_files, desc="Events"):
             z_true      = z_true,
             dL_high_90  = dL_high_90,
             mu_high     = mu_high,
-            area_90     = area_90,
             n_in_CI     = n_in_CI,
             app_mag_limit = m_lim,
             abs_mag_limit = M_lim,
@@ -297,6 +296,7 @@ for fname in tqdm(result_files, desc="Events"):
                 med_abs_mag=np.nan,
                 host_in_CI=False, host_survives_cut=False,
                 host_abs_mag=np.nan,
+                area_90=area_90,
             )})
             continue
 
@@ -323,6 +323,7 @@ for fname in tqdm(result_files, desc="Events"):
             host_in_CI        = host_in_CI,
             host_survives_cut = host_surv_cut,
             host_abs_mag      = host_abs_mag,
+            area_90           = area_90,
         )}
 
         if n_cut == 0:
@@ -341,6 +342,7 @@ for fname in tqdm(result_files, desc="Events"):
             self_chosen_luminosity_weight=False,
             app_mag_lim=m_lim,
             dL_high_90=dL_high_90,
+            siren_type=args.siren_type,
         )
 
         H0_dicts[m_lim][f"event_{inj_num}"] = like_H0

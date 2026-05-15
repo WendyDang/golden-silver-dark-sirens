@@ -71,19 +71,21 @@ def load_uchuu_for_event(ra_samples, dec_samples, ci_level=0.9):
     ra_samples/dec_samples are in radians (bilby posterior).
     Returns an astropy Table with stellar_mass column, or None if empty.
     """
-    npix     = hp.nside2npix(2048)
+    # nside=512 is sufficient to identify which nside=64 Uchuu tiles to load;
+    # the fine nside=1024 sky cut happens later inside find_galaxies_in_sky_and_distance_CI_healpix.
+    _TILE_NSIDE = 512
+    npix     = hp.nside2npix(_TILE_NSIDE)
     prob_map = np.zeros(npix)
     theta    = 0.5 * np.pi - dec_samples
     phi      = ra_samples
-    np.add.at(prob_map, hp.ang2pix(2048, theta, phi), 1)
+    np.add.at(prob_map, hp.ang2pix(_TILE_NSIDE, theta, phi), 1)
     prob_map /= prob_map.sum()
 
     cl          = find_greedy_credible_levels(prob_map)
     inside_high = np.where(cl <= ci_level)[0]
 
-    # Downgrade nside=2048 CI pixels to nside=64 catalog tiles.
-    # Uchuu parquet files are named by NESTED pixel ID.
-    theta_c, phi_c = hp.pix2ang(2048, inside_high)
+    # Downgrade CI pixels to nside=64 catalog tiles (NESTED pixel ID).
+    theta_c, phi_c = hp.pix2ang(_TILE_NSIDE, inside_high)
     cat_pixels = np.unique(hp.ang2pix(UCHUU_NSIDE, theta_c, phi_c, nest=True))
 
     frames = []
